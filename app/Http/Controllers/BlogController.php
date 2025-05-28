@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Tag;
 use App\Models\Comment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BlogController extends Controller
 {
@@ -86,8 +87,7 @@ class BlogController extends Controller
         $post = Post::where('slug', $slug)->firstOrFail();
 
         Comment::create([
-            'post_id' => $post->id,
-            'user_id' => auth()->id(),
+            'user_id' => optional(Auth::user())->id,
             'parent_id' => $request->parent_id,
             'content' => $request->content,
         ]);

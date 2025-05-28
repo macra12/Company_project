@@ -18,7 +18,7 @@
 }
 
 /* Global Colors - The following color variables are used throughout the website. Updating them here will change the color scheme of the entire website */
-:root { 
+:root {
   --background-color: #ffffff; /* Background color for the entire website, including individual sections */
   --default-color: #444444; /* Default color used for the majority of the text content across the entire website */
   --heading-color: #111111; /* Color for headings, subheadings and title throughout the website */
@@ -377,6 +377,39 @@ h6 {
     white-space: nowrap;
     transition: 0.3s;
   }
+  .feature-card {
+    border-radius: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    -webkit-transition: transform 0.3s ease, box-shadow 0.3s ease;
+    -moz-transition: transform 0.3s ease, box-shadow 0.3s ease;
+    -ms-transition: transform 0.3s ease, box-shadow 0.3s ease;
+    -o-transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .feature-title {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .feature-image {
+        transition: transform 0.3s ease;
+    }
+
+    .feature-card:hover .feature-image {
+        transform: scale(1.05);
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
 
   .navmenu a i,
   .navmenu a:focus i {
@@ -392,7 +425,7 @@ h6 {
     transition: 0.3s;
     background-color: color-mix(in srgb, var(--accent-color), transparent 90%);
   }
-
+  
   .navmenu a i:hover,
   .navmenu a:focus i:hover {
     background-color: var(--accent-color);

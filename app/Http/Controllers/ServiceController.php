@@ -1,33 +1,112 @@
 <?php
 namespace App\Http\Controllers;
+use App\Models\Service;
+use App\Models\Feature;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class ServiceController extends Controller
 {
     public function index()
     {
-        $services = [
-            ['slug' => 'nesciunt-mete', 'title' => 'Nesciunt Mete', 'description' => 'Provident nihil minus qui consequatur non omnis maiores. Eos accusantium minus dolores iure perferendis tempore et consequatur.'],
-            ['slug' => 'eosle-commodi', 'title' => 'Eosle Commodi', 'description' => 'Ut autem aut autem non a. Sint sint sit facilis nam iusto sint. Libero corrupti neque eum hic non ut nesciunt dolorem.'],
-            ['slug' => 'ledo-markt', 'title' => 'Ledo Markt', 'description' => 'Ut excepturi voluptatem nisi sed. Quidem fuga consequatur. Minus ea aut. Vel qui id voluptas adipisci eos earum corrupti.'],
-            ['slug' => 'asperiores-commodit', 'title' => 'Asperiores Commodit', 'description' => 'Non et temporibus minus omnis sed dolor esse consequatur. Cupiditate sed error ea fuga sit provident adipisci neque.'],
-            ['slug' => 'velit-doloremque', 'title' => 'Velit Doloremque', 'description' => 'Cumque et suscipit saepe. Est maiores autem enim facilis ut aut ipsam corporis aut. Sed animi at autem alias eius labore.'],
-            ['slug' => 'dolori-architecto', 'title' => 'Dolori Architecto', 'description' => 'Hic molestias ea quibusdam eos. Fugiat enim doloremque aut neque non et debitis iure. Corrupti recusandae ducimus enim.'],
-        ];
-        return view('pages.services', compact('services'));
+        $services = Service::all();
+        $features = Feature::all();
+        return view('pages.services', compact('services', 'features'));
     }
 
-    public function show($service)
+    public function show($slug)
     {
-        $services = [
-            'nesciunt-mete' => ['title' => 'Nesciunt Mete', 'description' => 'Provident nihil minus qui consequatur non omnis maiores. Eos accusantium minus dolores iure perferendis tempore et consequatur.'],
-            'eosle-commodi' => ['title' => 'Eosle Commodi', 'description' => 'Ut autem aut autem non a. Sint sint sit facilis nam iusto sint. Libero corrupti neque eum hic non ut nesciunt dolorem.'],
-            'ledo-markt' => ['title' => 'Ledo Markt', 'description' => 'Ut excepturi voluptatem nisi sed. Quidem fuga consequatur. Minus ea aut. Vel qui id voluptas adipisci eos earum corrupti.'],
-            'asperiores-commodit' => ['title' => 'Asperiores Commodit', 'description' => 'Non et temporibus minus omnis sed dolor esse consequatur. Cupiditate sed error ea fuga sit provident adipisci neque.'],
-            'velit-doloremque' => ['title' => 'Velit Doloremque', 'description' => 'Cumque et suscipit saepe. Est maiores autem enim facilis ut aut ipsam corporis aut. Sed animi at autem alias eius labore.'],
-            'dolori-architecto' => ['title' => 'Dolori Architecto', 'description' => 'Hic molestias ea quibusdam eos. Fugiat enim doloremque aut neque non et debitis iure. Corrupti recusandae ducimus enim.'],
-        ];
-        $service = $services[$service] ?? abort(404, 'Service not found');
-        return view('pages.service-details', compact('service'));
+        $service = Service::where('slug', $slug)->firstOrFail();
+
+        return view('pages.services.show', compact('service'));
+    }
+
+    public function create()
+    {
+        return view('pages.services.create');
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        $validated['slug'] = Str::slug($validated['title']);
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('services', 'public');
+        }
+
+        Service::create($validated);
+        return redirect()->route('services')->with('success', 'Service created successfully.');
+    }
+
+    public function edit($slug)
+    {
+        $service = Service::where('slug', $slug)->firstOrFail();
+        return view('pages.services.edit', compact('service'));
+    }
+
+    public function update(Request $request, $slug)
+    {
+        $service = Service::where('slug', $slug)->firstOrFail();
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        // Generate new slug from the updated title
+        $newSlug = Str::slug($validated['title']);
+
+        // Check if the new slug is different and doesn't conflict with existing services
+        if ($newSlug !== $service->slug) {
+            $existingService = Service::where('slug', $newSlug)->where('id', '!=', $service->id)->first();
+            if ($existingService) {
+                // If slug exists, append a number to make it unique
+                $counter = 1;
+                $originalSlug = $newSlug;
+                while (Service::where('slug', $newSlug)->where('id', '!=', $service->id)->exists()) {
+                    $newSlug = $originalSlug . '-' . $counter;
+                    $counter++;
+                }
+            }
+        }
+
+        $validated['slug'] = $newSlug;
+
+        // Handle image upload
+        if ($request->hasFile('image')) {
+            // Delete old image if it exists
+            if ($service->image && Storage::disk('public')->exists($service->image)) {
+                Storage::disk('public')->delete($service->image);
+            }
+
+            // Store new image
+            $validated['image'] = $request->file('image')->store('services', 'public');
+        }
+
+        // Update the service
+        $service->update($validated);
+
+        return redirect()->route('services')->with('success', 'Service updated successfully.');
+    }
+
+    public function destroy($slug)
+    {
+        $service = Service::where('slug', $slug)->firstOrFail();
+
+        // Delete associated image if it exists
+        if ($service->image && Storage::disk('public')->exists($service->image)) {
+            Storage::disk('public')->delete($service->image);
+        }
+
+        $service->delete();
+
+        return redirect()->route('services')->with('success', 'Service deleted successfully.');
     }
 }
